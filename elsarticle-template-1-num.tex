@@ -49,6 +49,7 @@
 \usepackage{siunitx}
 \usepackage{amsmath}
 \usepackage{todonotes}
+\usepackage{blkarray}
 
 %% natbib.sty is loaded by default. However, natbib options can be
 %% provided with \biboptions{...} command. Following options are
@@ -71,7 +72,7 @@
 
 % \biboptions{}
 
-\journal{ISPRS JPRS}
+\journal{ISPRS J. Photogram. Remote Sens.}
 
 \begin{document}
 
@@ -117,8 +118,8 @@
 Detection and quantification of geomorphic surface change is an important part of natural hazard management. For change detection in 3D topographic point clouds, acquired using e.g. terrestrial laser scanning (TLS), random and systematic noise has to be separated from the change signal. In point cloud differencing, the multiscale model-to-model cloud comparison (M3C2) approach is commonly applied, which provides a statistical significance test based on the local variance of the point cloud neighbourhood. This test is valid on planar surfaces sampled with a constant uncertainty level, and includes a single term corresponding to alignment uncertainty. 
 
 We extend this test by propagating the measurement and alignment uncertainties to achieve 3D covariance information on a per-point level, combining sensor knowledge and residuals from the alignment. Then, we quantify the Level of Detection, the minimum detectable change, using a 3D statistical significance test. 
-We verify our method in two simulated scenarios and apply it on a TLS time series of a rock glacier at two different timespans of 3 weeks and 1 year. 
-In the three weeks period, we manage to assign significant change to an additional 53\% of
+We verify our method in two simulated scenarios and apply it on a TLS time series of a rock glacier at two different timespans of 3 weeks and 1 year respectively. 
+In the three weeks period, we manage to detect significant change at an additional 53\% of
 spatial locations, corresponding to a volume of \SI{217}{m$^3$}, when compared to the baseline. 
 \end{abstract}
 
@@ -138,39 +139,78 @@ Level of Detection \sep t-Test \sep Signal-Noise-Separation \sep Terrestrial Las
 %%
 \linenumbers
 
+
+%%\defcitealias{gum}{JCGM, 2008}
+
 %% main text
 \section{Introduction}
 \label{sec:introduction}
 
-The Earth's surface is subject to constant change. Some of these changes have a local-level impact on the geomorphology. To study the phenomena causing these changes, and to monitor and predict mass movements, remote sensing methods are employed. Laser scanning is a method that allows sampling of three-dimensional points representing the surface. Depending on the measurement platform, they are referred to as airborne laser scanning (ALS), laser scanning from unmanned areal vehicles (ULS) and terrestrial laser scanning (TLS).
+The Earth's surface is subject to constant change. Some of these changes have a local-level impact on geomorphology. To study the phenomena causing these changes, and to monitor and predict mass movements, remote sensing methods are employed \citep{Brodu_Lague_2012, Eitel2016}. Laser~scanning is such a method, sampling three-dimensional points representing the surface. Depending on the measurement platform, the measurement is referred to as airborne laser scanning (ALS), laser scanning from unmanned areal vehicles (ULS) or terrestrial laser scanning (TLS).
 
-\subsection{Geomorphic surface changes}
 
-The result of laser scanning a surface is a three-dimensional point cloud, an unordered, irregular set of 3D coordinates. Additional attributes such as the signal strength or information of the returned laser pulse shape may be recorded for every point. The measurement process, e.g. based on the flight time of the emitted laser pulse, is subject to uncertainties. These stem from the sensor itself (e.g. synchronization between sender and reciever, reciever noise, ...), the medium of transmission (air; temperature, pressure, humidity) and the sampled object (local incidence angle, reflectance, sub-footprint roughness). 
-
-There is no straightforward comparison of point clouds from two different points in time (epochs), since a second acquisition will never have the exact same point distribution on the surface as the first one. Therefore, no 1:1 point homology can be established, and point-to-point distances cannot be directly calculated. A few methods to 
+The result of laser scanning a surface is a three-dimensional point cloud, an unordered, irregular set of 3D coordinates. Additional attributes such as the signal strength or information of the returned laser pulse shape may be recorded for every point \citep{Otepka_2013}. The measurement process, often based on the flight time of the emitted laser pulse, is subject to uncertainties\footnote{We take care to use the term "uncertainty" as defined in the \emph{Guide to the expression of uncertainty in measurement}: "The uncertainty [...] reflects the lack of exact knowledge of the value of the measurand" \citep{gum}, in contrast to "error", which is "an idealized concept and [...] cannot be known exactly" \citep{gum}. }. These stem from the sensor itself (e.g. synchronization between sender and reciever, reciever noise, ...), the medium of transmission (air; temperature, pressure, humidity) and the sampled object (local incidence angle, reflectance, sub-footprint roughness). Since the area illuminated by the laser is not infinitesimal, some angular ambiguity is also introduced \citep{Lichti_Jamtsho_2006, pfeifer2007investigating, Zame_2014, Wujanz_2017}.
 
 \subsection{Point cloud distance metrics}
 
+There is no straightforward comparison of point clouds from two different points in time (epochs), since the second acquisition will never have the exact same point distribution on the surface as the first one. Therefore, no one-to-one point homology can be established, and point-to-point distances cannot be directly calculated. Different methods to solve this problem have been established, which are presented shortly in this section. Furthermore, multitemporal datasets have to be aligned before change analyses can be carried out, which is commonly done using either signalled markers or defined stable areas, where the discrepancies between the two datasets are minimized. This process introduces further uncertainties, which are correlated for the points of a dataset. This correlation can also be considered. All of the presented point cloud distance metrics deal with two datasets. For change analyses, this is the atomic unit of a bitemporal analysis. Multi-temporal analyses such as \citet{anders20204d} use this atomic unit to extract 4D information.
+
+The most prominent method involves the creation of a regular representation of the terrain, i.e. a digital terrain model (DTM) of each epoch. Subsequently, the difference between the DTMs is calculated, giving a DTM of Difference (DoD), which represents the vertical offset at every pixel location. The downsides of this method are the constant direction of analysis (parallel to the z-Axis), the aggregation of points into a regular raster (which results in a loss of information), and the inability to represent change that is happening in the x/y-plane.
+
+Based on the full point cloud, a first approach is the Cloud-To-Cloud (C2C) distance. It reports the minimal euclidean distance between a point from Epoch 1 and the closest point from Epoch 2. This approach especially suffers from single outliers, as they may have an impact on multiple distances, if the outlier is much closer to the point cloud of the compared epoch. Furthermore, distances are generally underestimated, as the direction of analysis is always chosen to be towards the closest neighbour.
+
+The Cloud-To-Mesh (C2M) distance requires a model (i.e., a triangular irregular network, or triangular mesh) to be created from one of the datasets. Then, the distance can be calculated orthogonal to the respective triangle face. If the mesh is oriented, this also allows the calculation of signed distances, so the separation of volume gain from volume loss. Depending on the resolution of the dataset that is used for the model, changes in different scales may become visible. In comparison to the C2C distance, the triangle normal vector gives a more robust direction of analysis.
+
+Similarly, both datasets can be replaced by a model. The Mesh-to-Mesh (M2M) distance allows the calculation of volumes between the two meshes, which can be of particular interest in geomorphology. This volume is also symmetric, i.e. the order of the input point clouds does not influence the result, which is not the case for the previously mentioned cloud-based metrics. As with the C2M distance, a sign can be assigned if the mesh intersection forms multiple volumes.
+
+Finally, the multiscale model-to-model cloud comparison \citep[M3C2,][]{Lague2013} is the current state-of-the art in geomorphic point cloud change analysis \citep{Zahs2019}. For a subset (often called the \emph{core points}) of the reference point cloud, the local normal vector is estimated based on a neighbourhood of maximum planarity. Then, a query cylinder is created, using the normal vector as its axis. The points from both epochs are aggregated within the cylinder and their respective centers of gravity (CoGs) are calculated. The distance between the CoGs is then projected onto the cylinder axis, and used as distance measure between the point clouds at the location of the core point (Figure~\ref{fig:m3c2}) \citep{Lague2013}.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.9\linewidth]{figs/m3c2.png}
+    \caption{M3C2 point cloud distance. Two epochs (blue and green) are compared by estimating a local plane (blue) at a core point (orange) in the reference epoch, and then aggregating the points of the two epochs in a search cylinder aligned with the normal vector of the plane. The distance between the centers of gravity, projected onto the cylinder axis, is the distance $d$ (left). Additionally, the standard deviations of the point distributions along the axis are calculated as $\sigma_1$ and $\sigma_2$ (right).}
+    \label{fig:m3c2}
+\end{figure}
+
+Additionally, the sample variance of the local neighbourhood within the query cylinder is estimated for each epoch (Figure~\ref{fig:m3c2}, right). This measure, which is also projected onto the cylinder axis, is used as proxy for the accuracy of the CoG, and used in a t-Test. The null hypothesis is that the projection of the two CoGs, which represent mean values, is zero. Equation~\ref{eqn:t-test} gives the test statistic that is compared to the respective quantile of the F-distribution. It can also be reformulated to give information about the smallest change that can be distinguished from noise, commonly referred to as the Level of Detection (LoDetection), as shown in Equation~\ref{eqn:lod}. The value of 1.96 stems from the 95\% quantile of the F-distrubtion with degrees of freedom $n_1, n_2 > 30$, and is commonly used \citep{borradaile2003statistics}.
+
+\begin{equation}
+    t^2 = \sqrt{\frac{\sigma_1^2}{n_1} + \frac{\sigma_2^2}{n_2}} + reg.
+    \label{eqn:t-test}
+\end{equation}
+
+\begin{equation}
+    LoDetection_{95\%} = 1.96 \left( \sqrt{\frac{\sigma_1^2}{n_1} + \frac{\sigma_2^2}{n_2}} + reg. \right)
+    \label{eqn:lod}
+\end{equation}
+
+
+\subsection{Geomorphic surface changes}
+(tbd...) \todo{Braucht es das überhaupt?}
 
 \section{Methods and Experiments}
 \label{sec:methods}
 
-We present our method by three different additions to the standard M3C2 Level of Detection quantification. First, we investigate how observations with different standard deviations influence the Level of Detection by simulating a random sampling of a flat surface. Next, we show how non-planar geometries generally increase the baseline Level of Detection, and how we can circumvent this phenomenon. We also introduce the usage of a full 3D statistical test for the analysis and show its validity by a simulated laser scan. Finally, we show how we can estimate the uncertainty stemming from the alignment of two point clouds from two different epochs by using information from the alignment process (ICP), and how we can integrate this in the quantification of the Level of Detection. We then apply the novel method to a real-world TLS dataset of a rock glacier with two different time spans (1 year and 3 weeks).
+In this contribution, we present a novel change detection and quantification method for 3D point clouds. We extend the state-of-the-art M3C2 method by incorporating knowledge about the uncertainty of individual points, stemming from the measurement and alignment. This allows weighing the individual observations in the CoG calculation, and the use of propagated variance for statistical testing. Since we propagate errors\footnote{here: uncertainties, but 'error propagation' is more commonly used than 'uncertainty propagation'}, we refer to the results our method as either the "CoG-EP" for the CoG or "LoDetection-EP" for the minimum quantifiable change.
+
+We present our method by three different additions to the standard M3C2 LoDetection quantification. First, we investigate how observations with different standard deviations influence the LoDetection by simulating a random sampling of a flat surface. Next, we show how non-planar geometries generally increase the baseline LoDetection, and how we can circumvent this phenomenon. We also introduce the usage of a full 3D statistical test for the analysis and show its validity by laser scan simulation. Finally, we show how we can estimate the uncertainty stemming from the alignment of two point clouds from two different epochs by using information from the alignment process (an ICP-variant, see Section~\ref{sec:methods-c}), and how we can integrate this into the quantification of the LoDetection. We then apply our method to a real-world TLS dataset of a rock glacier on two different time spans (1 year and 3 weeks), highlighting the differences and similarities to the baseline.
+
 
 \subsection{(a) Merging of scan positions}
-In a first experiment, we evaluate how measurements with different accuracies can be combined to find the solution with the lowest variance, i.e. a BLUE (Best Linear Unbiased Estimator). For this, we sample n points in 1D (distance measurements) from a distribution $N_1 (0, \sigma_1^2)$ and combine them with m points sampled from another distribution $N_2(0, \sigma_2^2)$. We then calculate the baseline change by taking the mean value of the merged $m+n$ points, which has expectation 0. Its variance is further used to estimate the baseline Level of Detection. 
+\label{sec:methods-a}
+In the first experiment, we evaluate how measurements with different accuracies can be combined into a mean with the lowest variance, i.e. a BLUE (Best Linear Unbiased Estimator) of the mean. For this, we sample $n$ points in 1D (e.g. distance measurements) from a normal distribution $N_1 (0, \sigma_1^2)$ and combine them with $m$ points sampled from another normal distribution $N_2(0, \sigma_2^2)$. We then calculate the baseline by taking the mean value of the merged $m+n$ points, which has expectation 0. Its sample variance (estimated from the sampled data) is further used to estimate the baseline LoDetection. 
 
-If we have knowledge on the distributions the individual points were sampled from, we can instead calculate a weighted mean (with weights $1/\sigma_1^2$ for the first $n$ and $1/\sigma_2^2$ for the next $m$ points), which also has expectation 0. However, the variance can be predicted by calculating the average variance as $1/(m+n) (n\cdot\sigma_1^2 + m\cdot\sigma_2^2)$, again allowing the derivation of a Level of Detection.
-Both Levels of Detection are based on statistical tests, namely a t-Test of equal means, the baseline using the variance as calculated from the data and the improvement using the a-priori variance from knowledge on the underlying distribution. Following the literature (...), the Level of Detection is estimated at 95\% confidence. 
+If we have knowledge on the distributions the individual points were sampled from, we can instead calculate a weighted mean (with weights $1/\sigma_1^2$ for the first $n$ and $1/\sigma_2^2$ for the other $m$ points), which also has expectation 0. However, the variance can be predicted by calculating the average variance as $1/(m+n) (n\sigma_1^2 + m\sigma_2^2)$, again allowing the derivation of a LoDetection.
+Both Levels of Detection are based on statistical tests, namely a t-Test of equal means, the baseline using the sample variance as calculated from the data and the novel method using the a-priori variance from knowledge on the underlying distribution. The exact choice of siginificance level is secondary, as long as the information on the level is preserved \citep{taylor1997introduction, lane2003estimation}. We therefore estimate the LoDetection at 95\% confidence, as done by \citet{Lague_2013}.
 
-To test the correctness of the Level of Detection, we sample and calculate the distance of the mean to the mean of an independent sampling of the same composition 1000 times. In this Monte-Carlo-like approach, we can then quantify the area of 95\% of the calculated distances by taking the 0.025- and the 0.975-quantiles of the distances.
+To test the correctness of the LoDetection-EP, we sample and calculate the distance of these means to the means of an independent sampling of the same composition (representing a second epoch, where no change has occurred) 1000 times. In this Monte-Carlo approach, we can then quantify the central 95\% of the calculated distances by taking the 0.025- and the 0.975-quantiles of the distances, corresponding to 5\% outliers.
 
 This experiment is carried out for different values of n while keeping m constant. This simulates an increasing number of scan positions that are further away (i.e., less accurate) or in general, an increasing number of observations with a higher uncertainty.
 
 \subsection{(b) Non-planar objects}
-A second experiment shall prove the resilience of our method to non-flat areas. We assume a scan of the intersection of two planes, where the laser beam is orthogonal to the intersection line. The intersection angle is then changed from the two planes forming a flat surface (0\degree) to them being almost normal to the view direction (90\degree). 
-The normal vector for change analysis is kept constant towards the scanner. Therefore, with increasing intersection angle, the variance along this change axis increases, which leads to an over-estimation of the Level of Detection in the baseline. By using the averaged measurement accuracy (which is in this case identical to the accuracy of a single measurement), the Level of Detection is derived from error propagation.
+\label{sec:methods-b}
+A second experiment shows the resilience of our method to non-planar objects. As shown in Figure~\ref{fig:setup_b}, we assume a scan of the intersection of two planes, where the laser beam is orthogonal to the intersection line. The intersection angle is then varied from the two planes forming a flat surface (0\degree) to them being almost normal to the view direction (90\degree). 
+The normal vector for change analysis is kept constant towards the scanner. Therefore, with increasing intersection angle, the sample variance along this change axis increases, which leads to an overestimation of the LoDetection in the baseline method. By using the averaged measurement accuracy (which is in this case identical to the accuracy of a single measurement, as only one scan position is assumed), the LoDetection-EP can be alternatively derived for our method.
 
 \begin{figure}
     \centering
@@ -179,13 +219,13 @@ The normal vector for change analysis is kept constant towards the scanner. Ther
     \label{fig:setup_b}
 \end{figure}
 
-The measurements for this experiment were simulated using the helios++ software employing a RIEGL VZ-400 laser scanner with an accuracy of 5 mm at a range of 20 m from the plane intersection. An analysis point was selected in the middle of the intersection, and points within a (3D) neighbourhood of 1 m radius were used for the distance quantification.
-As the points here are 3D, the same is true for the means, and the statistical test determining the Level of Detection has to be testing the equality of multivariate means with a known (3x3) covariance matrix. The Hotelling’s T-squared provides such a test, and it can be related to a Fisher-Distribution. According to (??), the test is formulated as such:
+The measurements for this experiment were simulated using the helios++ software employing a RIEGL VZ-400 laser scanner with an accuracy of $\sigma=$\SI{5}{mm} at a range of \SI{100}{m} from the plane intersection. An analysis point was selected in the middle of the intersection, and points within a (3D) neighbourhood of \SI{1}{m} radius were used for the distance quantification.
+As the points here are 3D, the same is true for the means, and the statistical test determining the Level of Detection has to be testing the equality of multivariate means with a known (3x3) covariance matrix. The Hotelling’s T-squared provides such a test, and it can be related to a Fisher-Distribution. According to \citet{Hotelling_1992}, the test is formulated as follows:
 \begin{equation}
     t^2 = \frac{n_1 n_2}{n_1 + n_2} \left(\bar{x_1} - \bar{x_2}\right)^T \hat{\Sigma_{xx}^{-1}} \left(\bar{x_1} - \bar{x_2}\right) \sim T^2(p, n_1+n_2-2)
 \end{equation}
 
-To quantify a (scalar) level of detection, the distance vector has to be replaced by the direction of the analysis, i.e. the normal vector. We can factor out the magnitude of the vector required to accept/reject the null hypothesis (that the distance between the means \emph{in the direction of the normal vector} is not significantly different from 0) to quantify the Level of Detection:
+To quantify a (scalar) level of detection, the distance vector $\left(\bar{x_1} - \bar{x_2}\right)^T$ has to be replaced by the direction of the analysis, i.e. the normal vector. We can factor out the magnitude of the vector required to accept/reject the null hypothesis (that the distance between the means \emph{in the direction of the normal vector} is not significantly different from 0) to quantify the LoDetection at 95\% confidence:
 
 \begin{equation}
     LoDetection_{95\%} = \sqrt{\frac{T^2_{95\%}(p, n_1+n_2-2)}{\frac{n_1 n_2}{n_1 + n_2} \vec{n}^T \hat{\Sigma_{xx}^{-1}} \vec{n}}}
@@ -195,7 +235,8 @@ Similar to (a), a Monte-Carlo approach was undertaken, where the distance betwee
 
 
 \subsection{(c) Alignment uncertainty}
-As presented by Lague et al. (2013) and improved by James et al. (2017), the alignment between the two epochs being compared is not free of error. Therefore, an uncertainty from the coregistration is to be considered in addition to any measurement uncertainties. While Lague et al. (2013) use a single value, e.g. retrieved from RIEGL’s RiSCAN Multi-Station-Adjustment as an RMS value, and James et al. (2017) use a 2D precision map stemming from photogrammetric reconstruction, we calculate the alignment between the two epochs using ICP. As an adjustment, we do not only get the adjusted transformation parameters, but also estimates for their uncertainties. 
+\label{sec:methods-c}
+As presented by \citet{Lague_2013} and discussed by \citet{James_Robson_Smith_2017}, the alignment between the two epochs being compared is not free of error. Therefore, an uncertainty from the coregistration is considered in addition to any measurement uncertainties. While \citet{Lague_2013} use a single value, e.g. retrieved from RIEGL’s RiSCAN Multi-Station-Adjustment as an RMS value, and \citet{James_Robson_Smith_2017} use a 2D precision map stemming from photogrammetric reconstruction, we calculate the alignment between the two epochs using an ICP-variant \citep{besl1992method, glira2015correspondence}. As a result, we do not only retrieve the adjusted transformation parameters, but also estimates for their uncertainties. 
 To combine the uncertainties of measurement and transformation, we can write the full observation model (Equation~\ref{eq:obs_ICP}).
 
 \begin{equation}
@@ -237,19 +278,20 @@ To combine the uncertainties of measurement and transformation, we can write the
     \label{eq:obs_ICP}
 \end{equation}
 
-Applying the law of error propagation then gives us...
+The general law of error propagation \citep{gum} leads to Equation \ref{eq:EP}, where the numbers in the brackets denote the dimensionality of the involved matrices.
 
 \begin{equation}
 \begin{matrix}
-C_{mm} & = & A^T & \cdot &  C_{xx} & \cdot & A \\
-(3 \times 3) & & (3 \times 12+3n) & & (12+3n \times 12+3n) & & (12+3n \times 3)
+C_{xyz} & = & A^T & \cdot &  C_{r\varphi\theta} & \cdot & A \\
+(3n \times 3n) & & (3n \times 12+3n) & & (12+3n \times 12+3n) & & (12+3n \times 3n)
 \end{matrix}
+\label{eq:EP}
 \end{equation}
 
 However, since a whole point cloud is transformed using the same parameters, this introduces covariances between the points. Therefore, the derivatives of the coordinates of a point i with respect to the transformation parameters of point j are not 0. This leads to a covariance matrix for a full point cloud, where the off-block-diagonal entries are also not 0, as shown in Equation~\ref{eq:C_xx}.
 
 \begin{equation}
-C_{xx} = 
+C_{xyz} = 
     \begin{pmatrix}
     \sigma_{x_1}^2 & \sigma_{x_1, y_1} & \sigma_{x_1, z_1} &  \sigma_{x_1, x_2} & \sigma_{x_1, y_2} & \dots & \sigma_{x_1, x_n} & \sigma_{x_1, y_n} & \sigma_{x_1, z_n}  \\
     
@@ -273,20 +315,62 @@ C_{xx} =
     \label{eq:C_xx}
 \end{equation}
 
-Even when only looking at a small subset of e.g. $n=50,000$ points, which might be the number of points used in the M3C2 search cylinder, the size of the matrices are not practical, as even when using single-precision floats, the matrix $C_xx$ would require XX GB of memory. 
-However, as presented by Winiwarter et al. (2020), the structure of the functional model makes it possible to explicitly calculate the values and sum them up.
+Even when only processing a small subset of e.g. $n=50,000$ points, which might be the number of points used in the M3C2 search cylinder, the size of the matrices are not practical. When using single-precision \emph{float}s (32 bits) to store the data, the matrix $C_{xx}$ would require around \SI{83}{GB} of memory. 
+However, as presented by \citet{winiwarterherausforderungen}, the structure of the functional model makes it possible to explicitly calculate the values symbolically (i.e. analytically) and sum them up, when calculating the average of multiple points (as is the case for the CoGs).
 
-The matrix $A$ contains the partial derivatives of the functional model, which is the average function here. The derivatives therefore are either $1/n$ or $0$:
+The matrix $A$ contains the partial derivatives of the functional model (Equation~\ref{eq:obs_ICP}). The respective derivatives (Equation~\ref{eqn:F}) are listed above the matrix (for the $i$-th point, i.e. the $3i$-th to $3(i+1)$-th line of $A^T$). Note that the derivatives of the $i$-th point with respect to teh $j$-th measurement are all zero $\forall i \neq j$. This is indicated by the "$\dots$" in the columns for $\frac{\partial}{\partial xyz_{0...(i-1)}} $ and $\frac{\partial}{\partial xyz_{(i+1)...n}}$.
+     
 \begin{equation}
-    A^T = \frac{1}{n} \begin{pmatrix}
-        1 & 0 & 0 & 1 & 0 & 0 & \dots & 1 & 0 & 0 \\
-        0 & 1 & 0 & 0 & 1 & 0 &  \dots & 0 & 1 & 0 \\
-        0 & 0 & 1 & 0 & 0 & 1 &\dots & 0 & 0 & 1 \\
-    \end{pmatrix}
+\begin{aligned}
+    A^T_{3i\dots3(i+1)} = 
+    \begin{blockarray}{cccccc}
+     \frac{\partial}{\partial a_{11}} & \frac{\partial}{\partial a_{12}} & \frac{\partial}{\partial a_{13}} & 
+     \frac{\partial}{\partial a_{21}} & \frac{\partial}{\partial a_{22}} & \frac{\partial}{\partial a_{23}} \\
+    \begin{block}{(cccccc}
+      (x_i - x_0) & (x_i - x_0) & (x_i - x_0) & 0 & 0 & 0 \\
+      0 & 0 & 0 & (y_i - y_0) & (y_i - y_0) & (y_i - y_0)  \\
+      0 & 0 & 0 & 0 & 0 & 0 \\
+    \end{block}
+  \end{blockarray}
+  \\
+\begin{blockarray}{ccccccccccc}
+     \frac{\partial}{\partial a_{31}} & \frac{\partial}{\partial a_{32}} & \frac{\partial}{\partial a_{33}} & 
+     \frac{\partial}{\partial t_{x}} & \frac{\partial}{\partial t_{y}} & \frac{\partial}{\partial t_{z}} &\frac{\partial}{\partial xyz_{0...(i-1)}} &
+     \frac{\partial}{\partial x_{i}} & \frac{\partial}{\partial y_{i}} & \frac{\partial}{\partial z_{i}} 
+     &\frac{\partial}{\partial xyz_{(i+1)...n}} 
+     \\
+    \begin{block}{ccccccc[ccc]l)}
+      0 & 0 & 0 & 1 & 0 & 0 & & 1 & 0 & 0 &  \\
+      0 & 0 & 0 & 0 & 1 & 0 & \dots & 0 & 1 & 0 & \dots \\
+      (z_i - z_0) & (z_i - z_0) & (z_i - z_0) & 0 & 0 & 1 & & 0 & 0 & 1 & 
+      \end{block}
+  \end{blockarray}
+  \end{aligned}
     \label{eqn:F}
 \end{equation}
 
-Explicit calculation e.g. for the contribution of the covariance between points $i$ and $j$ to the $\sigma_{x}^2$-element (1,1-element) of the matrix $C_{mm}$ is shown in Equation~\ref{eq:sigma_xi_xj}. Note that the influence does not depend on $j$ \todo{is this correct?}
+The covariance matrix of a CoG is then further propagated from a number of $p$ points, by selecting the corresponding $3p$ rows and $3p$ columns of the matrix $C_xyz$. The functional model here is much simpler, as shown by the derivatives in Equation~\ref{eq:J}. The law of error propagation is applied as shown in Equation~\ref{eq:C_pp}, with the numbers in brackets again representing the dimensionality. It results in a $3\times3$ covariance matrix for the CoG $x_m$.
+
+\begin{equation}
+    A^T = \frac{1}{p}\begin{pmatrix}
+     1 & 0 & 0 & & 1 & 0 & 0 \\
+     0 & 1 & 0 & \dots & 0 & 1 & 0 \\
+     0 & 0 & 1 & & 0 & 0 & 1 \\
+    \end{pmatrix}
+    \label{eq:J}
+\end{equation}
+
+
+
+\begin{equation}
+\begin{matrix} C_{mm} & = & A^T & \cdot &  C_{pp} & \cdot & A \\
+(3 \times 3) & & (3 \times 3p) & & (3p \times 3p) & & (3p \times 3)
+\end{matrix}
+\label{eq:C_pp}
+\end{equation}
+
+
+Explicit calculation e.g. for the contribution of the covariance between points $i$ and $j$ to the $\sigma_{x}^2$-element (1,1-element) of the matrix $C_{mm}$ is shown in Equation~\ref{eq:sigma_xi_xj}. This represents the multiplation of the $i$-th column of $A^T$ with the $j$-th column of $A$, using the respective elements in $C_{xyz}$ as weights. Note that the influence does not depend on the actual point $j$ (and only the number of points $n$), as the transformation parameters are irrespective of the index.
 
 \begin{equation}
 \begin{array}{rl}
@@ -301,22 +385,22 @@ Explicit calculation e.g. for the contribution of the covariance between points 
 \label{eq:sigma_xi_xj}
 \end{equation}
 
-In addition, the measurement uncertainty has to be added in the case $i=j$. Thus, the resulting uncertainty contribution for point $i$ is shown in Equation~\ref{eq:sigma_xi2}. The covariance for other coordinates and -combinations is derived in a similar manner.
+In addition, the measurement uncertainty has to be added in the case $i=j$, corresponding to the elements in the square brackets of Equation~\ref{eqn:F}. Thus, the resulting uncertainty contribution for point $i$ is shown in Equation~\ref{eq:sigma_xi2}. Additionally, the $x$-, $y$- and $z$-components are further derived with respect to the polar measurement quantities (for which the variance is known) $r_i$, $\varphi_i$ and $\theta_i$. The covariance for other coordinates and -combinations is derived in a similar manner.
 
 \begin{equation}
 \begin{array}{rl}
-    \sigma_{x_i}^2 = & \sigma_{x_i  x_j} + \left( a_{11} \cos \varphi \sin \theta + a_{12} \sin \varphi \sin \theta + a_{13} \cos \theta \right)^2 \sigma_{r}^2 +\\
+    \sigma_{x_i}^2 = & \sigma_{x_i  x_i} + \left( a_{11} \cos \varphi \sin \theta + a_{12} \sin \varphi \sin \theta + a_{13} \cos \theta \right)^2 \sigma_{r}^2 +\\
     & \left( - a_{11} r \sin \varphi \sin \theta + a_{12} r \cos \varphi \sin \theta \right) ^2 \sigma_{\varphi}^2 + \\
     & \left( a_{11} r \cos \varphi \cos \theta + a_{12} r \sin \varphi \cos \theta - a_{13} r \sin \theta \right)^2 \sigma_{\theta}^2
 \end{array}
 \label{eq:sigma_xi2}
 \end{equation}
 
-For the center of gravity $m$, the resulting observation accuracy is then the mean over all $i,j$, as shown in Equation~\ref{eq:C_mm}.
+For the center of gravity $x_m$, the resulting observation accuracy is then the mean over all $i,j$, as shown in Equation~\ref{eq:C_mm}. This replaces the calculation of Equations~\ref{eq:EP} and \ref{eq:C_pp}, and therefore the need to work with matrices of dimension $(12+3n)\times (12+3n)$ or $(3p\times 3p)$, respectively.
 
 
 \begin{equation}
-C_{mm} =  \frac{1}{n}
+C_{mm} =  \frac{1}{p}
    \begin{pmatrix}
     \sum_i \sum_j \sigma_{x_i x_j} & \sum_i \sum_j \sigma_{x_i y_j} & \sum_i \sum_j \sigma_{x_i z_j} \\
     
@@ -328,11 +412,12 @@ C_{mm} =  \frac{1}{n}
     \label{eq:C_mm}
 \end{equation}
 
-We evaluate the uncertainty of the mean points between which the M3C2 distance is quantified and represent it as 3x3 per-point covariance matrices $C_{mm}$, representing 3D error ellipsoids. An eigenvalue decomposition subsequently gives the magnitude of the semi-major axis, independent from the direction. We run the analysis three times, once  considering only measurement uncertainties, once considering only coregistration uncertainties, and once considering the combination of the two.
+We evaluate the uncertainties of the mean points between which the M3C2 distance is quantified and represent them as 3x3 per-point covariance matrices $C_{mm}$, representing 3D error ellipsoids. An eigenvalue decomposition subsequently gives the magnitude of the semi-major axis, independent from the direction. We run the analysis three times, once considering only measurement uncertainties, once considering only coregistration uncertainties, and once considering the combination of the two.
 
 \subsection{(d) Application example}
+\label{sec:methods-d}
 
-As presented in (a), the knowledge on the uncertainty should not only be used for the calculation of the Level of Detection, but also for weighing the mean. In our case, this means the calculation of a 3D Center of Gravity weighed by individual 3D covariance matrices and correlations between the points. We use a Gauss-Markov-Model to find the mean $(m_x, m_y, m_z)$, with the residuals $v_{x_i}, v_{y_i}, v_{z_i}$ in the observation equations $\varphi_k$, $k=1,2,\dots,3n$ (Equation~\ref{eq:obs}).
+As presented in (a), the knowledge on the uncertainty should not only be used for the calculation of the Level of Detection, but also as weights in the mean calculation. In our case, this means the calculation of a 3D CoG weighed by individual 3D covariance matrices and correlations between the points. We use a Gauss-Markov-Model to find the mean $(m_x, m_y, m_z)$, with the residuals $v_{x_i}, v_{y_i}, v_{z_i}$ in the observation equations $\varphi_k$, $k=1,2,\dots,3n$ (Equation~\ref{eq:obs}), where every measurement is an observation of the mean $x$, $y$ or $z$ coordinates.
 
 \begin{equation}
 \begin{array}{rl}
@@ -350,7 +435,9 @@ As presented in (a), the knowledge on the uncertainty should not only be used fo
 \label{eq:obs}
 \end{equation}
 
-This Gauss-Markov model leads to a Design matrix with a tiled ($3\times3$)-eye-matrix structure as in Equation~\ref{eqn:F}, but without the factor of $1/n$. However, in the solution of this problem, using the Gaussian normal equations, the inverse of the Covariance matrix has to be calculated to find the weight matrix P. We therefore ignore the influence of the coregistration; assuming it to be constant throughout the local neighbourhood. This is motivated by our findings from experiment (c) as shown in Section ??. The covariance matrix $C_{xx}$ therefore is a block-diagonal matrix which can be inverted by inverting the per-point 3x3 covariance matrices, and then directly combined with the Design matrix A, leading to Equation~\ref{eq:ATP}.
+This Gauss-Markov model leads to a Jacobian matrix with a tiled ($3\times3$)-eye-matrix structure as in Equation~\ref{eqn:J}, but without the $1/p$ factor in front (as no average is taken in these observations).
+
+However, in the solution of this problem using the Gaussian normal equations, the inverse of the covariance matrix $C_kk$ has to be calculated to find the weight matrix P. In Section~\ref{sec:methods-c}, we showed that this is not practical due to its size. Matrix inversion has the same complexity as matrix multiplication \citep{cormen2009introduction}, so the problem persists.We therefore ignore the influence of the coregistration; assuming it to be constant throughout the local neighbourhood. This is motivated by our findings from experiment (c) as shown in Section~\ref{sec:results-c}. The covariance matrix $C_{pp}$ therefore is a block-diagonal matrix which can be inverted by inverting the per-point 3x3 covariance blocks, giving the weight matrix $P$. Combining this weight matrix directly with the transpose Jacobian $A^T$ gives Equation~\ref{eq:ATP}.
 
 \begin{equation}
 \begin{array}{lr}
@@ -391,7 +478,7 @@ The weighted mean is finally calculated as $m = (A^TPA)^{-1} A^TPl$, where $l$ i
 
 \section{Data}
 
-For experiments (c) and (d) as mentioned in Section ??, we present the performance of our improved change detection method on a rock glacier in the Austrian Alps. This rock glacier, the Äußeres Hochebenkar, has been monitored by terrestrial, airborne and UAV-based laser scanning for several years in different frequencies. We use three datasets, acquired on 19 July 2017, 7 July 2018 (“2018a”) and 30 July 2018 (“2018b”). The 2017 dataset was recorded from 7 scan positions distributed along the edge of the rock glacier using a RIEGL VZ-400 laser scanner. The 2018 datasets were acquired using a RIEGL VZ-2000i laser scanner, with six (2018a) and seven (2018b) scan positions, respectively. An overview map showing the outline of the laser scanner and the position of the rock glacier is give in Figure~\ref{fig:map}.
+For experiments (c) and (d) as presented in Sections~\ref{sec:methods-c} and \ref{sec:methods-d} we present the performance of our improved change detection method on a rock glacier in the Austrian Alps. This rock glacier, the Äußeres Hochebenkar, has been monitored by terrestrial, airborne and UAV-based laser scanning for several years in different intervals. We use three datasets, acquired by terrestrial laser scanning on 19 July 2017 ("2017"), 7 July 2018 (“2018a”) and 30 July 2018 (“2018b”). The 2017 dataset was recorded from 7 scan positions distributed along the edge of the rock glacier using a RIEGL VZ-400 laser scanner. The 2018 datasets were acquired using a RIEGL VZ-2000i laser scanner, with six (2018a) and seven (2018b) scan positions, respectively. An overview map showing the outline of the laser scanner and the position of the rock glacier is give in Figure~\ref{fig:map}.
 
 \begin{figure}
     \centering
@@ -404,19 +491,29 @@ The measurement accuracy of the two laser scanners is slightly different, as sho
 \begin{table}[h!]
     \centering
     \begin{tabular}{r|llll}
-    Scanner Type&	Accuracy&	Precision&	Beam divergence&	Angle resolution\\ \hline
+    \textbf{Scanner Type}&	\textbf{Accuracy}&	\textbf{Precision}&	\textbf{Beam divergence}&	\textbf{Angle resolution}\\ \hline
 VZ-400&	5 mm&	3 mm&	0.30 mrad&	$<$ 0.0005 \degree\\
 VZ-2000i&	5 mm&	3 mm&	0.27 mrad&	$<$ 0.0007 \degree (V),\\
 & & & & $<$ 0.0005 \degree(Hz)
     \end{tabular}
-    \caption{Caption}
+    \caption{Ranging and angular uncertainty measures for the employed systems. We use the \emph{Accuracy} as $\sigma_r$ and the quarter of the \emph{Beam divergence} as $\sigma_\varphi$ and $\sigma_\theta$.}
     \label{tab:accuracy}
 \end{table}
 
 
 We analyzed the differences between 2017 and 2018a as a one-year timespan, and between 2018a and 2018b as a three-weeks timespan. The respective former epoch was taken as reference, from which the normal vectors for the M3C2 cylinders were calculated. 
 
-Alignment of the scan positions and epochs was carried out using RIEGL’s Multi-Station-Adjustment (included in RiScan Pro). Subsequently, an ICP run was conducted using OPALS, which provided the required covariance information on the uncertainty of the transformation parameters. The ICP results are shown in Table ??, where for both analyses the first epoch was set as fixed.
+Alignment of the scan positions and epochs was carried out using RIEGL’s Multi-Station-Adjustment (included in RiScan Pro). Subsequently, an ICP run was conducted using OPALS, which provided the required covariance information on the uncertainty of the transformation parameters. The ICP results are shown in Table~\ref{tab:ICP_results}, where for both analyses the first epoch was set as fixed.
+
+\begin{table}[h!]
+\begin{tabular}{r|llll}
+\textbf{Epochs} & \textbf{\# Corresp.} & \textbf{Mean $dp$ [m]} & \textbf{Std. dev. $dp$ [m]} & \textbf{Max Translation [m]} \\ \hline
+2017-2018a      & 4553                & 0.02805                & 0.00016                     & 0.009                        \\
+2018a-2018b     & 4189                & 0.02702                & -0.00056                    & 0.022                       
+\end{tabular}
+\caption{Results and charcteristics of the ICP alignment. $dp$ refers to the (signed) point-to-plane distances. For the analysis, the full covariance matrix of the estimated values is used.}
+\label{tab:ICP_results}
+\end{table}
 
 
 \section{Results}
@@ -452,12 +549,14 @@ Figure~\ref{fig:plot_b} shows that with an increasing angle of the edge, the bas
 As a validation, we again plot the central 95-percentile of the quantified change (with expectation zero) as the red area, which coincides nicely with the LoDetection-EP, while the baseline overestimates the Level of Detection.  
 
 \subsection{(c) Alignment uncertainty}
+\label{sec:results-c}
 As presented in Section ??, additional uncertainties stemming from the alignment of the two epochs have to be considered in real-world applications where the scan positions are not fixed (i.e. survey pillars). The baseline method uses a constant coregistration uncertainty for the whole dataset, which we estimate from residual point-to-plane distances in areas that were manually delineated as stable rock. For the coregistration from 2017 to 2018a, the mean residuals were 0.02 m, for the coregistration from 2018a to 2018b, they were XX m.
 
 
 \begin{figure}
     \centering
-    \includegraphics[width=0.9\linewidth]{placeholder.jpg}
+    \includegraphics[width=0.45\linewidth]{placeholder.jpg}
+    \includegraphics[width=0.45\linewidth]{placeholder.jpg}
     \caption{Comparison of influence of measurement (left) and alignment (right) uncertainties on per-point semi-major axes}
     \label{fig:plot_c}
 \end{figure}
@@ -528,7 +627,7 @@ Examples:
 \section{Discussion}
 In our analyses, we used a constant search radius for both the normal vector calculation and the cylinder projection. The significance of the change results for the geomorphic analysis of the rock glacier may suffer from this simplification, but the focus on this study was to compare the M3C2 baseline method with our extension, M3C2-EP. The significance of the results presented in Section ?? are not influenced by the search radius, as we used the same radius for both methods. 
 
-Closely related yet separate is the question of the direction of change analysis. Using the local surface normal vector is applicable for many processes but can lead to hard to interpret results e.g. at a rock fall where the local surface changes significantly. Williams et al. (in review) analyze change in 60 different directions and at different scales to find the direction of mean displacement (DMD). M3C2-EP allows yet a different approach. By applying an eigenvalue decomposition on the propagated covariance matrix, the direction in which change can be best detected can be calculated. While is direction is not motivated by geomorphic processes, it allows for optimization of the measurement setup to align this direction e.g. with the DMD. Such an optimization can be achieved by using laser scanning simulation software to automatically try different scan positions and -settings, such as the HELIOS software (Bechtold & Höfle, 2013).
+Closely related yet separate is the question of the direction of change analysis. Using the local surface normal vector is applicable for many processes but can lead to hard to interpret results e.g. at a rock fall where the local surface changes significantly. Williams et al. (in review) analyze change in 60 different directions and at different scales to find the direction of mean displacement (DMD). M3C2-EP allows yet a different approach. By applying an eigenvalue decomposition on the propagated covariance matrix, the direction in which change can be best detected can be calculated. While is direction is not motivated by geomorphic processes, it allows for optimization of the measurement setup to align this direction e.g. with the DMD. Such an optimization can be achieved by using laser scanning simulation software to automatically try different scan positions and -settings, such as the HELIOS software (Bechtold \& Höfle, 2013).
 
 The amount of core points that can be attributed significant change instead of noise increased for both timespans with our method. As expected, this was especially prominent for the shorter timespan of 3 weeks (2018a-2018b), where changes are in general smaller. Therefore, a lower Level of Detection is required to detect the changes that are present. 
 Changes that we detect as significant but were overlooked by the baseline method mostly concern vegetation, where the planarity assumption of M3C2 is violated. This may be overcome by filtering vegetation from the point cloud in a preprocessing step.
@@ -565,7 +664,7 @@ In light of recent trends towards 4D analyses, such as (Anders et al., 2020), co
 
 %% References with bibTeX database:
 
-% \bibliographystyle{model1-num-names}
+%%\bibliographystyle{model1-num-names}
 
 %% New version of the num-names style
 \bibliographystyle{elsarticle-num-names}
